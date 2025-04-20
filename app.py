@@ -150,10 +150,38 @@ else:
         st.rerun()
 
     with st.expander("🕘 내 감정 히스토리 보기"):
+        st.markdown("#### 📊 감정 카테고리 자동 분류 결과")
+        category_keywords = {
+            "스트레스": ["지치", "짜증", "불안", "과로", "긴장"],
+            "우울": ["무기력", "우울", "의욕", "힘들", "외롭"],
+            "기쁨": ["행복", "기쁨", "뿌듯", "좋아", "감사"],
+            "분노": ["화남", "짜증", "열받", "불공정"],
+            "불안": ["걱정", "두려움", "불안", "초조"]
+        }
         db = SessionLocal()
         records = db.query(EmotionRecord).filter_by(email=st.session_state["user"]).order_by(EmotionRecord.timestamp.desc()).limit(100).all()
         db.close()
         if records:
+            # 카테고리 통계
+            category_counts = {}
+            for r in records:
+                matched = False
+                for cat, kws in category_keywords.items():
+                    if any(kw in r.user_input for kw in kws):
+                        category_counts[cat] = category_counts.get(cat, 0) + 1
+                        matched = True
+                        break
+                if not matched:
+                    category_counts["기타"] = category_counts.get("기타", 0) + 1
+
+            if category_counts:
+                cat_names, cat_vals = zip(*category_counts.items())
+                fig3, ax3 = plt.subplots()
+                ax3.bar(cat_names, cat_vals)
+                ax3.set_title("내 감정 분포", fontproperties=fontprop)
+                ax3.set_xticklabels(cat_names, fontproperties=fontprop, rotation=30)
+                st.pyplot(fig3)
+
             for r in records:
                 st.markdown(f"**🕓 {r.timestamp.strftime('%Y-%m-%d %H:%M')}**\n- 입력: `{r.user_input}`\n- GPT 위로: _\"{r.gpt_reply}\"_\n---")
         else:
