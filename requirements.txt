@@ -1,0 +1,8 @@
+streamlit
+openai
+firebase-admin
+requests
+pandas
+matplotlib
+fonttools
+sqlalchemy
