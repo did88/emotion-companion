@@ -129,6 +129,7 @@ else:
                     temperature=0.7
                 )
                 reply = response.choices[0].message.content.strip()
+
                 db = SessionLocal()
                 record = EmotionRecord(
                     id=str(uuid.uuid4()),
@@ -141,7 +142,6 @@ else:
                 db.close()
 
                 st.success(reply)
-
                 st.session_state.chat_history.append({"user": user_input, "assistant": reply})
 
     if st.button("로그아웃"):
@@ -165,12 +165,10 @@ else:
             db = SessionLocal()
             records = db.query(EmotionRecord).order_by(EmotionRecord.timestamp.desc()).all()
 
-            # 유저 이메일 선택 기능
             emails = sorted(set(r.email for r in records))
             selected_email = st.selectbox("👤 특정 사용자 이메일 선택", options=["전체 보기"] + emails)
             if selected_email != "전체 보기":
                 records = [r for r in records if r.email == selected_email]
-            db.close()
 
             st.write(f"총 기록 수: {len(records)}개")
 
