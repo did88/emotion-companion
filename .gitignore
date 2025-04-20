@@ -1,0 +1,37 @@
+# .gitignore for emotion-companion project
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+
+# Jupyter
+.ipynb_checkpoints
+
+# Virtual environments
+.env
+.venv
+venv/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode or IDE settings
+.vscode/
+.idea/
+
+# Fonts or external assets
+fonts/*.ttf
+
+# 기타
+*.bak
+*.swp
