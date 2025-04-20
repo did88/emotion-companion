@@ -1,6 +1,4 @@
 import streamlit as st
-st.set_page_config(page_title="감정 위로 챗봇", page_icon="🫂")
-
 from openai import OpenAI
 import requests
 from datetime import datetime
@@ -9,13 +7,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from collections import Counter
-
 import firebase_admin
 from firebase_admin import credentials
-
 from db import SessionLocal, EmotionRecord
 
-# 서버 배포용 한글 폰트 설정 (NanumGothic.ttf 필요)
+# 앱 설정
+st.set_page_config(page_title="감정 위로 챗봇", page_icon="🫂")
 font_path = "./fonts/NanumGothic.ttf"
 fontprop = fm.FontProperties(fname=font_path)
 plt.rcParams['font.family'] = fontprop.get_name()
@@ -25,8 +22,8 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(dict(st.secrets["firebase"]))
     firebase_admin.initialize_app(cred)
 
-# OpenAI 클라이언트
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+ADMIN_EMAIL = "wsryang@gmail.com"
 
 if "user" not in st.session_state:
     st.session_state["user"] = None
@@ -41,6 +38,7 @@ if st.session_state["user"] is None:
             password = st.text_input("비밀번호 입력", type="password", key="login_password", autocomplete="current-password")
             reset_pw = st.checkbox("비밀번호 재설정 메일 보내기")
             submitted = st.form_submit_button("로그인")
+
             if submitted:
                 api_key = st.secrets["FIREBASE_WEB_API_KEY"]
                 if reset_pw:
@@ -72,7 +70,7 @@ if st.session_state["user"] is None:
             st.markdown("""
             #### ✅ 이용 약관 안내
             본 감정 위로 챗봇은 감정 공감을 위한 도구이며, 의료 조언이 아닙니다.
-            데이터는 개인화와 서비스 향상 목적 외에는 사용되지 않습니다.
+            입력한 감정과 AI의 응답은 저장되며, 익명 분석 및 서비스 개선 목적으로 사용됩니다.
             """)
             agree = st.checkbox("위 내용을 모두 읽고 이해했으며, 동의합니다.")
             submitted = st.form_submit_button("회원가입")
@@ -95,17 +93,27 @@ if st.session_state["user"] is None:
                     else:
                         error_info = res.json().get("error", {}).get("message", "알 수 없는 오류")
                         st.error(f"회원가입 실패: {error_info}")
-
 else:
     st.title("🫂 감정 위로 챗봇")
     st.write(f"{st.session_state['user']} 님, 오늘 기분은 어떠신가요?")
+
+    st.markdown("""
+    🛡️ **감정데이터 수집 안내**
+
+    - 입력한 감정 텍스트와 AI 응답은 익명으로 저장되며, 향후 통계 및 서비스 개선에 사용될 수 있습니다.
+    - 데이터는 외부에 공개되지 않으며, 개인 식별이 불가능한 형태로만 활용됩니다.
+    """)
+    consent = st.checkbox("위 내용을 읽고 이해했으며, 감정데이터 수집에 동의합니다.")
+
     user_input = st.text_area("지금 느끼는 감정을 한 줄로 표현해 주세요.", placeholder="예: 너무 지치고 무기력해요...")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     if st.button("위로받기"):
-        if not user_input.strip():
+        if not consent:
+            st.warning("감정 위로를 받기 위해서는 동의가 필요합니다.")
+        elif not user_input.strip():
             st.warning("감정을 입력해 주세요.")
         else:
             messages = [{"role": "system", "content": "당신은 섬세하고 따뜻한 감정 상담가입니다."}]
@@ -141,7 +149,7 @@ else:
         st.session_state.chat_history = []
         st.rerun()
 
-    with st.expander("🕘 이전 감정 히스토리 보기"):
+    with st.expander("🕘 내 감정 히스토리 보기"):
         db = SessionLocal()
         records = db.query(EmotionRecord).filter_by(email=st.session_state["user"]).order_by(EmotionRecord.timestamp.desc()).limit(100).all()
         db.close()
@@ -151,52 +159,42 @@ else:
         else:
             st.info("아직 저장된 감정 기록이 없습니다.")
 
-    with st.expander("📊 감정 분석 보기"):
-        db = SessionLocal()
-        records = db.query(EmotionRecord).filter_by(email=st.session_state["user"]).all()
-        db.close()
+    if st.session_state["user"] == ADMIN_EMAIL:
+        with st.expander("📂 관리자용 감정 분석 패널", expanded=False):
+            st.markdown("### 전체 감정 기록 통계")
+            db = SessionLocal()
+            records = db.query(EmotionRecord).all()
+            db.close()
 
-        if records:
-            all_inputs = "\n".join([r.user_input for r in records])
-            prompt = f"""
-            다음은 한 사용자의 감정 기록입니다. 이 기록을 분석해 주세요.
-            1. 자주 등장하는 감정 키워드 3~5개
-            2. 감정의 전반적인 경향
-            3. 이 사용자가 지금 가장 필요로 하는 심리적 메시지 한 문장
-            텍스트:\n{all_inputs}
-            """
-            with st.spinner("감정을 분석 중입니다..."):
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
-                )
-                st.markdown("#### 분석 결과")
-                st.markdown(response.choices[0].message.content.strip())
+            st.write(f"총 기록 수: {len(records)}개")
 
-            keywords = [w for r in records for w in r.user_input.split() if len(w) > 1]
-            common = Counter(keywords).most_common(10)
-            if common:
-                words, counts = zip(*common)
-                fig, ax = plt.subplots()
-                ax.bar(words, counts)
-                ax.set_title("감정 키워드 빈도수 상위 10개", fontproperties=fontprop)
-                ax.set_xticklabels(words, fontproperties=fontprop, rotation=45)
-                ax.tick_params(axis='x', labelsize=10)
-                st.pyplot(fig)
+            if records:
+                st.markdown("#### 감정 입력 예시")
+                for r in records[:5]:
+                    st.markdown(f"- {r.user_input} → _{r.gpt_reply}_")
 
-            df = pd.DataFrame([(r.timestamp.date(), 1) for r in records], columns=["date", "count"])
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.groupby("date").sum().reset_index()
-            if not df.empty:
-                fig2, ax2 = plt.subplots()
-                ax2.plot(df["date"], df["count"], marker='o')
-                ax2.set_title("일자별 감정 입력 수 추이", fontproperties=fontprop)
-                ax2.set_xlabel("날짜", fontproperties=fontprop)
-                ax2.set_ylabel("입력 수", fontproperties=fontprop)
-                ax2.set_xticks(df["date"])
-                ax2.set_xticklabels(df["date"].dt.strftime('%Y-%m-%d'), fontproperties=fontprop, rotation=45)
-                ax2.grid(True)
-                st.pyplot(fig2)
-        else:
-            st.info("분석할 감정 기록이 없습니다.")
+                keywords = [w for r in records for w in r.user_input.split() if len(w) > 1]
+                common = Counter(keywords).most_common(10)
+                if common:
+                    words, counts = zip(*common)
+                    fig, ax = plt.subplots()
+                    ax.bar(words, counts)
+                    ax.set_title("감정 키워드 빈도수 상위 10개", fontproperties=fontprop)
+                    ax.set_xticklabels(words, fontproperties=fontprop, rotation=45)
+                    st.pyplot(fig)
+
+                df = pd.DataFrame([(r.timestamp.date(), 1) for r in records], columns=["date", "count"])
+                df["date"] = pd.to_datetime(df["date"])
+                df = df.groupby("date").sum().reset_index()
+                if not df.empty:
+                    fig2, ax2 = plt.subplots()
+                    ax2.plot(df["date"], df["count"], marker='o')
+                    ax2.set_title("일자별 감정 입력 수 추이", fontproperties=fontprop)
+                    ax2.set_xlabel("날짜", fontproperties=fontprop)
+                    ax2.set_ylabel("입력 수", fontproperties=fontprop)
+                    ax2.set_xticks(df["date"])
+                    ax2.set_xticklabels(df["date"].dt.strftime('%Y-%m-%d'), fontproperties=fontprop, rotation=45)
+                    ax2.grid(True)
+                    st.pyplot(fig2)
+            else:
+                st.info("분석할 감정 기록이 없습니다.")
