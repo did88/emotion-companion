@@ -42,27 +42,27 @@ if st.session_state["user"] is None:
             reset_pw = st.checkbox("비밀번호 재설정 메일 보내기")
             submitted = st.form_submit_button("로그인")
             if submitted:
-            api_key = st.secrets["FIREBASE_WEB_API_KEY"]
-            if reset_pw:
-                res = requests.post(
-                    f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}",
-                    json={"requestType": "PASSWORD_RESET", "email": email}
-                )
-                if res.status_code == 200:
-                    st.success("비밀번호 재설정 이메일이 발송되었습니다. 메일함을 확인해주세요.")
+                api_key = st.secrets["FIREBASE_WEB_API_KEY"]
+                if reset_pw:
+                    res = requests.post(
+                        f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}",
+                        json={"requestType": "PASSWORD_RESET", "email": email}
+                    )
+                    if res.status_code == 200:
+                        st.success("비밀번호 재설정 이메일이 발송되었습니다. 메일함을 확인해주세요.")
+                    else:
+                        st.error("비밀번호 재설정 실패")
                 else:
-                    st.error("비밀번호 재설정 실패")
-            else:
-                res = requests.post(
-                    f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
-                    json={"email": email, "password": password, "returnSecureToken": True}
-                )
-                if res.status_code == 200:
-                    st.session_state["user"] = res.json()["email"]
-                    st.success(f"{email} 님, 로그인되었습니다!")
-                    st.rerun()
-                else:
-                    st.error("로그인 실패")
+                    res = requests.post(
+                        f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
+                        json={"email": email, "password": password, "returnSecureToken": True}
+                    )
+                    if res.status_code == 200:
+                        st.session_state["user"] = res.json()["email"]
+                        st.success(f"{email} 님, 로그인되었습니다!")
+                        st.rerun()
+                    else:
+                        st.error("로그인 실패")
 
     with tab2:
         with st.form("signup_form"):
