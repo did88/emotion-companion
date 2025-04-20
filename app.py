@@ -129,8 +129,6 @@ else:
                     temperature=0.7
                 )
                 reply = response.choices[0].message.content.strip()
-                st.success(reply)
-
                 db = SessionLocal()
                 record = EmotionRecord(
                     id=str(uuid.uuid4()),
@@ -141,6 +139,8 @@ else:
                 db.add(record)
                 db.commit()
                 db.close()
+
+                st.success(reply)
 
                 st.session_state.chat_history.append({"user": user_input, "assistant": reply})
 
