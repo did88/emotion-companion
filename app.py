@@ -39,9 +39,20 @@ if st.session_state["user"] is None:
         with st.form("login_form"):
             email = st.text_input("이메일 입력", key="login_email", autocomplete="email")
             password = st.text_input("비밀번호 입력", type="password", key="login_password", autocomplete="current-password")
+            reset_pw = st.checkbox("비밀번호 재설정 메일 보내기")
             submitted = st.form_submit_button("로그인")
             if submitted:
-                api_key = st.secrets["FIREBASE_WEB_API_KEY"]
+            api_key = st.secrets["FIREBASE_WEB_API_KEY"]
+            if reset_pw:
+                res = requests.post(
+                    f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}",
+                    json={"requestType": "PASSWORD_RESET", "email": email}
+                )
+                if res.status_code == 200:
+                    st.success("비밀번호 재설정 이메일이 발송되었습니다. 메일함을 확인해주세요.")
+                else:
+                    st.error("비밀번호 재설정 실패")
+            else:
                 res = requests.post(
                     f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
                     json={"email": email, "password": password, "returnSecureToken": True}
