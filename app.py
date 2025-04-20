@@ -82,7 +82,8 @@ if st.session_state["user"] is None:
                     if res.status_code == 200:
                         st.success("회원가입 완료! 로그인 탭으로 이동해주세요.")
                     else:
-                        st.error("회원가입 실패")
+                        error_info = res.json().get("error", {}).get("message", "알 수 없는 오류")
+                        st.error(f"회원가입 실패: {error_info}")
 
 else:
     st.title("🫂 감정 위로 챗봇")
