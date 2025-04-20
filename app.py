@@ -163,7 +163,13 @@ else:
         with st.expander("📂 관리자용 감정 분석 패널", expanded=False):
             st.markdown("### 전체 감정 기록 통계")
             db = SessionLocal()
-            records = db.query(EmotionRecord).all()
+            records = db.query(EmotionRecord).order_by(EmotionRecord.timestamp.desc()).all()
+
+            # 유저 이메일 선택 기능
+            emails = sorted(set(r.email for r in records))
+            selected_email = st.selectbox("👤 특정 사용자 이메일 선택", options=["전체 보기"] + emails)
+            if selected_email != "전체 보기":
+                records = [r for r in records if r.email == selected_email]
             db.close()
 
             st.write(f"총 기록 수: {len(records)}개")
